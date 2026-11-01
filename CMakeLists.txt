@@ -366,8 +366,8 @@ option(USE_LSAN "Use Leak Sanitizer" OFF)
 option(USE_TSAN "Use Thread Sanitizer" OFF)
 
 # remember whether the user set USE_CUDA before the option() below
-# installs the defualt, cuda.cmake errors out if they asked for CUDA and
-# its not there
+# installs the default, cuda.cmake errors out if they asked for CUDA and
+# it is not there
 pytorch_record_explicit_request(USE_CUDA "Use CUDA")
 
 # CUDA is incompatible with TSAN
@@ -381,7 +381,7 @@ cmake_dependent_option(
   "USE_CUDA AND LINUX AND BUILD_PYTHON" OFF)
 pytorch_record_explicit_request(USE_ROCM "Use ROCm")
 # the dependent option below retypes an explicit USE_ROCM=ON to OFF on
-# platforms it doesnt support, so refuse the request here while the user's
+# platforms it does not support, so refuse the request here while the user's
 # value is still in the cache. the toolkit-not-found case is
 # cmake/public/LoadHIP.cmake's business
 if(_USE_ROCM_EXPLICITLY_SET AND USE_ROCM AND NOT (LINUX OR WIN32))

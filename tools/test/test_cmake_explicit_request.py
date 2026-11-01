@@ -1,14 +1,15 @@
 """checks for explicitly requested build options (gh-114388).
 
-a USE_* option set with -D or thru the enviroment has to fail the
-configure when we cant provide it, and has to keep falling back to OFF
+a USE_* option set with -D or through the environment has to fail the
+configure when we cannot provide it, and has to keep falling back to OFF
 when nobody asked for it. the scratch project here runs the real
 cmake/EnvVarForwarding.cmake, the real option declarations pulled out of
-CMakeLists.txt, and the real loaders and fallback sites from
-cmake/Dependencies.cmake, so we exercise the actual wiring instead of a
-copy of it.
+CMakeLists.txt, and the real NCCL fallback block from
+cmake/Dependencies.cmake, so those are exercised as wired. the CUDA and
+ROCm fallback wiring below is a hand-written copy of the real blocks, so
+changes there are not caught here.
 
-USE_XPU isnt covered: xpu.cmake does find_package(SYCLToolkit REQUIRED)
+USE_XPU is not covered: xpu.cmake does find_package(SYCLToolkit REQUIRED)
 which fails the configure on its own before the not-found guard is even
 reached.
 """
@@ -173,8 +174,19 @@ class TestExplicitRequestFallbacks(unittest.TestCase):
         self.assert_fails(CUDA_GUARD_MESSAGE, build="cuda-env-persist")
         self.assert_ok("USE_CUDA", False, "-DUSE_CUDA=OFF",
                        build="cuda-env-persist")
-        # taking the request back also clears it for later default runs
+        # taking the request back also clears the marker for later runs
         self.assert_ok("USE_CUDA", False, build="cuda-env-persist")
+        cache = (self.tmp / "cuda-env-persist" / "CMakeCache.txt").read_text()
+        self.assertIn("_USE_CUDA_EXPLICITLY_SET:INTERNAL=OFF", cache)
+
+    def test_cuda_explicit_request_cleared_by_unset(self) -> None:
+        self.skip_if_cuda_installed()
+        # cmake -U (or "Remove Entry" in cmake-gui) is the standard way
+        # back to the default, so the request must not survive it
+        self.assert_fails(CUDA_GUARD_MESSAGE, "-DUSE_CUDA=ON", build="cuda-unset")
+        self.assert_ok("USE_CUDA", False, "-U", "USE_CUDA", build="cuda-unset")
+        cache = (self.tmp / "cuda-unset" / "CMakeCache.txt").read_text()
+        self.assertNotIn("_USE_CUDA_EXPLICITLY_SET:INTERNAL=", cache)
 
     # --- ROCm: new guard, split by what the platform lets you reach
 
@@ -187,8 +199,8 @@ class TestExplicitRequestFallbacks(unittest.TestCase):
             "-DUSE_ROCM=ON", build="rocm-platform")
 
     def test_rocm_explicit_request_not_found(self) -> None:
-        if not IS_LINUX:
-            self.skipTest("the LoadHIP fallback is only reached on Linux")
+        if not (IS_LINUX or sys.platform == "win32"):
+            self.skipTest("the LoadHIP fallback is only reached on Linux and Windows")
         if HAVE_ROCM:
             self.skipTest("ROCm is installed, so it cannot be missing")
         message = "ROCm was explicitly requested (USE_ROCM=1) but cannot be found."
@@ -199,13 +211,13 @@ class TestExplicitRequestFallbacks(unittest.TestCase):
     def test_rocm_explicit_request_persists_in_cache(self) -> None:
         if IS_LINUX and HAVE_ROCM:
             self.skipTest("ROCm is installed, so it cannot be missing")
-        if IS_LINUX:
+        if IS_LINUX or sys.platform == "win32":
             message = "ROCm was explicitly requested (USE_ROCM=1) but cannot be found."
         else:
             message = "ROCm was explicitly requested (USE_ROCM=1) but is only " \
                       "supported on Linux and Windows."
         # the -D entry stays in the cache so a later default run in the
-        # same dir fails too, untill the user overrides it
+        # same dir fails too, until the user overrides it
         self.assert_fails(message, "-DUSE_ROCM=ON", build="rocm-persist")
         self.assert_fails(message, build="rocm-persist")
         self.assert_ok("USE_ROCM", False, "-DUSE_ROCM=OFF", build="rocm-persist")
@@ -257,7 +269,7 @@ class TestExplicitRequestFallbacks(unittest.TestCase):
     def test_rocm_fatal_does_not_poison_cuda(self) -> None:
         if IS_LINUX and HAVE_ROCM:
             self.skipTest("ROCm is installed, so it cannot be missing")
-        if IS_LINUX:
+        if IS_LINUX or sys.platform == "win32":
             message = "ROCm was explicitly requested (USE_ROCM=1) but cannot be found."
         else:
             message = "ROCm was explicitly requested (USE_ROCM=1) but is only " \

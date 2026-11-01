@@ -6,6 +6,10 @@ set -ex
 
 export TH_BINARY_BUILD=1
 export USE_CUDA=0
+# This is a CPU-only build: there is no CUDA or ROCm backend for NCCL/RCCL
+# to build against, and the configure now fails on explicitly requested
+# options it cannot provide.
+export DISABLE_RCCL=1
 
 # Keep an array of cmake variables to add to
 if [[ -z "$CMAKE_ARGS" ]]; then

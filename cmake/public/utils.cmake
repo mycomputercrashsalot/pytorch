@@ -137,7 +137,7 @@ endmacro()
 # configure's declaration or fallback, and only the last kind carries the
 # declaration's doc string: option() and cmake_dependent_option() stamp
 # their doc string over an entry they adopt, caffe2_update_option() keeps
-# it. only checking wether the entry exists gets this wrong: a configure
+# it. only checking whether the entry exists gets this wrong: a configure
 # that dies before its fallback runs leaves the declaration default behind
 # and the next run reads it as a user request.
 #
@@ -160,6 +160,10 @@ function(pytorch_record_explicit_request option docstring)
             CACHE INTERNAL "user-sourced request for ${option}" FORCE)
       endif()
     endif()
+  else()
+    # removing the entry (cmake -U, or "Remove Entry" in cmake-gui) is the
+    # standard way back to the default, so the request goes with it
+    unset(_${option}_EXPLICITLY_SET CACHE)
   endif()
   set(_${option}_EXPLICITLY_SET "${_${option}_EXPLICITLY_SET}" PARENT_SCOPE)
 endfunction()
@@ -167,7 +171,7 @@ endfunction()
 
 ##############################################################################
 # error out when an option recorded with pytorch_record_explicit_request()
-# was asked for but cant be provided, instead of quietly building without
+# was asked for but cannot be provided, instead of quietly building without
 # it. <feature> names the feature for the message, <reason> completes
 # "but <reason>", leftover args are the advice for fixing or taking back
 # the request
