@@ -158,6 +158,17 @@ class TestExplicitRequestFallbacks(unittest.TestCase):
         # fallback-cached OFF as an explicit request
         self.assert_ok("USE_CUDA", False, build="cuda-default")
 
+    def test_forced_value_wins_over_cached_on(self) -> None:
+        # cmake_dependent_option applies the force value with a plain
+        # set() in the caller's scope, so a wrapper that is a function
+        # would eat it and leave the cached ON visible after the call.
+        # USE_TSAN turns USE_CUDA off, USE_DISTRIBUTED=OFF turns USE_NCCL
+        # off, even with the ON value already in the cache
+        self.assert_ok("USE_CUDA", False, "-DUSE_CUDA=ON", "-DUSE_TSAN=ON",
+                       build="force-cuda")
+        self.assert_ok("USE_NCCL", False, "-DUSE_DISTRIBUTED=OFF",
+                       build="force-nccl")
+
     def test_cuda_explicit_request_persists_in_cache(self) -> None:
         self.skip_if_cuda_installed()
         # option() stamps its doc string over an adopted entry during the
@@ -244,6 +255,8 @@ class TestExplicitRequestFallbacks(unittest.TestCase):
                 "-DUSE_NCCL=ON", build="nccl-platform")
 
     def test_nccl_default_falls_back(self) -> None:
+        if HAVE_CUDA or HAVE_ROCM:
+            self.skipTest("a backend is installed, so NCCL stays available")
         self.assert_ok("USE_NCCL", False, build="nccl-default")
         self.assert_ok("USE_NCCL", False, "-DUSE_NCCL=OFF", build="nccl-d-off")
 
@@ -273,6 +286,12 @@ class TestExplicitRequestFallbacks(unittest.TestCase):
         else:
             message = "ROCm was explicitly requested (USE_ROCM=1) but is only " \
                       "supported on Linux and Windows."
+        # on macOS the refusal fires at declaration time, before the
+        # harness's CUDA fallback has run, so this is the case where a
+        # leftover USE_CUDA=ON default could look like a request on the
+        # next run. on Linux the refusal comes from LoadHIP after that
+        # fallback already wrote USE_CUDA=OFF, and the same assertions
+        # cover the fatal-then-reconfigure flow there
         self.assert_fails(message, "-DUSE_ROCM=ON", build="poison-rocm")
         # following the error's advice must not trip the CUDA guard on a
         # box with no CUDA either

@@ -176,17 +176,17 @@ endfunction()
 # to stay in one place: use these instead of calling
 # pytorch_record_explicit_request() by hand above a plain option() or
 # cmake_dependent_option() line.
-function(pytorch_option option docstring default_value)
+macro(pytorch_option option docstring default_value)
   pytorch_record_explicit_request(${option} "${docstring}")
   option(${option} "${docstring}" ${default_value})
-endfunction()
+endmacro()
 
 
-function(pytorch_dependent_option option docstring default_value depends force)
+macro(pytorch_dependent_option option docstring default_value depends force)
   pytorch_record_explicit_request(${option} "${docstring}")
   cmake_dependent_option(${option} "${docstring}" ${default_value}
                          "${depends}" ${force})
-endfunction()
+endmacro()
 
 
 ##############################################################################

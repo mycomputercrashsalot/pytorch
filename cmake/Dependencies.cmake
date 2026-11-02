@@ -1214,7 +1214,8 @@ if(USE_NCCL)
     # if the user explicitly asked for NCCL, error out instead of
     # falling back
     pytorch_guard_explicit_request(USE_NCCL NCCL "requires a CUDA or ROCm build"
-      "Please enable USE_CUDA or USE_ROCM.")
+      "No CUDA or ROCm toolkit was found, so neither backend is on; "
+      "see the earlier fallback warnings.")
     message(WARNING
         "Not using CUDA/ROCM, so disabling USE_NCCL. Suppress this warning with "
         "-DUSE_NCCL=OFF.")
