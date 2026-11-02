@@ -367,30 +367,25 @@ option(USE_TSAN "Use Thread Sanitizer" OFF)
 
 # remember whether the user set USE_CUDA before the option() below
 # installs the default, cuda.cmake errors out if they asked for CUDA and
-# it is not there
-pytorch_record_explicit_request(USE_CUDA "Use CUDA")
+# it is not there. CUDA is incompatible with TSAN
+pytorch_dependent_option(USE_CUDA "Use CUDA" ON "NOT USE_TSAN" OFF)
 
-# CUDA is incompatible with TSAN
-cmake_dependent_option(USE_CUDA "Use CUDA" ON "NOT USE_TSAN" OFF)
-
-pytorch_record_explicit_request(USE_XPU "Use XPU")
-option(USE_XPU "Use XPU" ON)
+pytorch_option(USE_XPU "Use XPU" ON)
 option(USE_MTIA "Use MTIA" OFF)
 cmake_dependent_option(
   BUILD_LAZY_CUDA_LINALG "Build cuda linalg ops as separate library" ON
   "USE_CUDA AND LINUX AND BUILD_PYTHON" OFF)
-pytorch_record_explicit_request(USE_ROCM "Use ROCm")
-# the dependent option below retypes an explicit USE_ROCM=ON to OFF on
-# platforms it does not support, so refuse the request here while the user's
-# value is still in the cache. the toolkit-not-found case is
+# the dependent option retypes an explicit USE_ROCM=ON to OFF on platforms
+# it does not support, so the refusal below reads the recorded request
+# instead of the value. the toolkit-not-found case is
 # cmake/public/LoadHIP.cmake's business
-if(_USE_ROCM_EXPLICITLY_SET AND USE_ROCM AND NOT (LINUX OR WIN32))
+pytorch_dependent_option(USE_ROCM "Use ROCm" ON "LINUX OR WIN32" OFF)
+if(_USE_ROCM_EXPLICITLY_SET AND NOT (LINUX OR WIN32))
   message(FATAL_ERROR
     "PyTorch: ROCm was explicitly requested (USE_ROCM=1) but is only "
     "supported on Linux and Windows. "
     "If you want to build without ROCm, please set USE_ROCM=0.")
 endif()
-cmake_dependent_option(USE_ROCM "Use ROCm" ON "LINUX OR WIN32" OFF)
 cmake_dependent_option(USE_ROCM_CK_GEMM "Use ROCm Composable Kernel for GEMMs" ON "USE_ROCM;NOT WIN32" OFF)
 cmake_dependent_option(USE_ROCM_CK_SDPA "Use ROCm Composable Kernel for SDPA" ON "USE_ROCM;NOT WIN32" OFF)
 # Off by default because enabling gfx12 adds CK SDPA code generation and compile
@@ -416,13 +411,14 @@ option(USE_PYTORCH_METAL_EXPORT "Export Metal models on MacOSX desktop" OFF)
 option(USE_NATIVE_ARCH "Use -march=native" OFF)
 cmake_dependent_option(USE_MPS "Use MPS for macOS build" ON "MPS_FOUND" OFF)
 option(USE_DISTRIBUTED "Use distributed" ON)
-pytorch_record_explicit_request(USE_NCCL "Use NCCL")
 # same early refusal as USE_ROCM above, for the parts of the condition we
 # can already decide here: the platform and distributed parts, and whether
 # any NCCL-capable backend is even asked for. whether a CUDA or ROCm build
 # actually materializes gets checked at the fallback site in
 # cmake/Dependencies.cmake
-if(_USE_NCCL_EXPLICITLY_SET AND USE_NCCL)
+pytorch_dependent_option(USE_NCCL "Use NCCL" ON
+                         "USE_DISTRIBUTED;USE_CUDA OR USE_ROCM;UNIX;NOT APPLE" OFF)
+if(_USE_NCCL_EXPLICITLY_SET)
   if(NOT (USE_DISTRIBUTED AND UNIX AND NOT APPLE))
     message(FATAL_ERROR
       "PyTorch: NCCL was explicitly requested (USE_NCCL=1) but requires "
@@ -435,8 +431,6 @@ if(_USE_NCCL_EXPLICITLY_SET AND USE_NCCL)
       "If you want to build without NCCL, please set USE_NCCL=0.")
   endif()
 endif()
-cmake_dependent_option(USE_NCCL "Use NCCL" ON
-                       "USE_DISTRIBUTED;USE_CUDA OR USE_ROCM;UNIX;NOT APPLE" OFF)
 cmake_dependent_option(USE_XCCL "Use XCCL" ON
                        "USE_XPU;UNIX;NOT APPLE" OFF)
 cmake_dependent_option(USE_RCCL "Use RCCL" ON "USE_NCCL;NOT WIN32" OFF)

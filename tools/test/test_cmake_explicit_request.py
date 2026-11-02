@@ -84,9 +84,8 @@ def build_harness() -> str:
     cmake_lists = (REPO / "CMakeLists.txt").read_text()
     options = extract(
         cmake_lists,
-        r"^option\(USE_ASAN .*?"
-        r"^cmake_dependent_option\(USE_NCCL .*?OFF\)",
-        "USE_CUDA..USE_NCCL option block",
+        r"^option\(USE_ASAN .*?(?=^cmake_dependent_option\(USE_XCCL)",
+        "USE_ASAN..USE_NCCL option block",
     )
     dependencies = (REPO / "cmake" / "Dependencies.cmake").read_text()
     nccl_block = extract(

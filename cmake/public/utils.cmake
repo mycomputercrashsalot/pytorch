@@ -170,6 +170,26 @@ endfunction()
 
 
 ##############################################################################
+# option() / cmake_dependent_option() wrappers that record an explicit user
+# request first. the record call needs the declaration's doc string to tell
+# a user entry apart from an earlier declaration default, so the two have
+# to stay in one place: use these instead of calling
+# pytorch_record_explicit_request() by hand above a plain option() or
+# cmake_dependent_option() line.
+function(pytorch_option option docstring default_value)
+  pytorch_record_explicit_request(${option} "${docstring}")
+  option(${option} "${docstring}" ${default_value})
+endfunction()
+
+
+function(pytorch_dependent_option option docstring default_value depends force)
+  pytorch_record_explicit_request(${option} "${docstring}")
+  cmake_dependent_option(${option} "${docstring}" ${default_value}
+                         "${depends}" ${force})
+endfunction()
+
+
+##############################################################################
 # error out when an option recorded with pytorch_record_explicit_request()
 # was asked for but cannot be provided, instead of quietly building without
 # it. <feature> names the feature for the message, <reason> completes
